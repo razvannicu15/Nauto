@@ -181,6 +181,12 @@ class SessionBuilder {
 
       // --- session state machine
       final dongleEvent = e.t == 'bt' && e.dongle;
+      if (cur == null && e.t == 'mark' && out.isNotEmpty && e.ts - out.last.end < 20 * 60 * 1000) {
+        // Flagged right after a drive (e.g. once parked): it belongs to that drive.
+        out.last.marks++;
+        out.last.events.add(e);
+        continue;
+      }
       if (cur == null) {
         // A flag with nothing going on = the adapter never reached the phone.
         if ((dongleEvent && e.on) || e.isProjection || e.t == 'mark') {
