@@ -202,6 +202,30 @@ class Analyzer {
       }
     }
 
+    // Flagged by the user, but the adapter never showed up on the phone.
+    final silent = bad.where((s) => s.firstBt == null && s.firstAa == null).length;
+    if (silent >= 1) {
+      f.add(Finding(
+        id: 'no_bt',
+        kind: Kind.cause,
+        score: (0.35 + 0.15 * silent).clamp(0, 0.9).toDouble(),
+        title: tr('Adaptorul nu găsește telefonul', 'The adapter doesn\'t find the phone'),
+        detail: tr(
+            'Ai marcat o problemă, dar adaptorul nu s-a conectat deloc prin Bluetooth (LED verde intermitent continuu). Telefonul nu a răspuns la Bluetooth-ul adaptorului.',
+            'You flagged a problem, but the adapter never connected over Bluetooth (LED blinking green continuously). The phone didn\'t answer the adapter\'s Bluetooth.'),
+        fixes: [
+          tr('Bluetooth și Wi-Fi pornite mereu pe telefon (nu le opri din panoul rapid sau din rutine).',
+              'Keep Bluetooth and Wi-Fi always on (don\'t turn them off from Quick Settings or routines).'),
+          tr('Dacă Bluetooth-ul propriu al mașinii MG e asociat cu telefonul, șterge-l sau dezactivează-i „Apeluri” și „Audio”: concurează cu adaptorul la pornire.',
+              'If the MG\'s own Bluetooth is paired with the phone, unpair it or turn off its “Calls” and “Audio”: it competes with the adapter at start.'),
+          tr('Android Auto → Setări → „Android Auto wireless” activat.', 'Android Auto → Settings → “Wireless Android Auto” on.'),
+          tr('Dacă tot nu merge: uită AAWireless din Bluetooth și din Wi-Fi, resetează adaptorul din aplicație și împerechează din nou.',
+              'If it still fails: forget AAWireless in Bluetooth and Wi-Fi, reset the adapter from its app and pair again.'),
+        ],
+        evidence: tr('$silent drumuri marcate fără nicio conectare a adaptorului.', '$silent flagged drives with no adapter connection at all.'),
+      ));
+    }
+
     // Drops while driving.
     final drops = bad.expand((s) => s.drops).toList();
     if (drops.isNotEmpty) {

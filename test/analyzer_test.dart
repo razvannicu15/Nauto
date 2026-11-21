@@ -82,6 +82,18 @@ void main() {
     expect(d.findings.any((f) => f.id == 'drop_power'), isTrue);
   });
 
+  test('a flag without any adapter connection is a failed drive', () {
+    final evs = [
+      Ev.at(10000, 'mark'),
+      for (var i = 1; i < 4; i++) ...drive(10000 + i * 3600),
+    ];
+    final s = build(evs);
+    expect(s.length, 4);
+    expect(s.first.outcome, Outcome.fail);
+    final d = Analyzer.run(s);
+    expect(d.findings.any((f) => f.id == 'no_bt'), isTrue);
+  });
+
   test('journal parsing skips broken lines', () {
     final evs = Ev.parse('{"ts":2000,"t":"bt","on":true}\n{"ts":1000,"t":"aa","type":2}\n{broken');
     expect(evs.length, 2);

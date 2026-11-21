@@ -182,7 +182,8 @@ class SessionBuilder {
       // --- session state machine
       final dongleEvent = e.t == 'bt' && e.dongle;
       if (cur == null) {
-        if ((dongleEvent && e.on) || e.isProjection) {
+        // A flag with nothing going on = the adapter never reached the phone.
+        if ((dongleEvent && e.on) || e.isProjection || e.t == 'mark') {
           cur = open(e);
           dongleOffAt = null;
         } else {
