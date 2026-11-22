@@ -95,6 +95,18 @@ class DrivesPage extends StatelessWidget {
       return (Icons.smartphone, e.on ? tr('Ecran aprins', 'Screen on') : tr('Ecran stins', 'Screen off'));
     case 'plug':
       return (Icons.power, e.on ? tr('Încărcare pornită', 'Charging') : tr('Încărcare oprită', 'Not charging'));
+    case 'gh':
+      final ev = e.d['e'] as String? ?? '';
+      final txt = switch (ev) {
+        'WIRELESS_WIFI_SOCKET_CONNECTED' => tr('Android Auto: conectat la adaptor', 'Android Auto: connected to the adapter'),
+        'FRAMER_READ_IO_EXCEPTION_WITH_NO_DATA_RECEIVED' => tr('Android Auto: adaptorul n-a trimis nimic (mașina nu răspunde)', 'Android Auto: adapter sent nothing (car not answering)'),
+        'WIRELESS_SETUP_FAILED_TO_START_NO_HFP_FROM_HU_PRESENCE' => tr('Android Auto: lipsă hands-free de la adaptor', 'Android Auto: no hands-free from the adapter'),
+        'VERSION_NEGOTIATION_STARTED' => tr('Android Auto: mașina a răspuns', 'Android Auto: the car answered'),
+        'WIRELESS_CONNECTED_WIFI' => tr('Android Auto: Wi-Fi adaptor conectat', 'Android Auto: adapter Wi-Fi connected'),
+        'WIRELESS_WIFI_NETWORK_CONNECTION_LOST' => tr('Android Auto: Wi-Fi adaptor pierdut', 'Android Auto: adapter Wi-Fi lost'),
+        _ => 'Android Auto: $ev',
+      };
+      return (Icons.terminal, txt);
     case 'mark':
       return (Icons.flag, tr('Ai marcat o problemă', 'You flagged a problem'));
     case 'info':

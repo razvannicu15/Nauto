@@ -68,13 +68,15 @@ class Analyzer {
   static const goodDrives = 8;
 
   static Diagnosis run(List<Session> sessions, {PhoneState phone = const PhoneState()}) {
-    final all = sessions.where((s) => s.finished).toList();
+    final all = sessions.where((s) => s.finished && s.outcome != Outcome.wired).toList();
+    final wiredOk = sessions.where((s) => s.wired).length;
     final bad = all.where((s) => s.bad).toList();
     final ttcs = all.map((s) => s.ttc).whereType<int>().toList()..sort();
     final median = ttcs.isEmpty ? null : ttcs[ttcs.length ~/ 2];
     final f = <Finding>[];
 
     if (bad.isNotEmpty) {
+      _androidAutoLog(bad, wiredOk, f);
       _patterns(all, bad, f);
       _factors(all, bad, f);
     }
@@ -145,6 +147,53 @@ class Analyzer {
             'Settings → Battery → Background usage limits → “Never sleeping apps”: add Android Auto and Nauto.'),
         tr('Nu porni economizorul de baterie în mașină.', 'Don\'t use battery saver in the car.'),
       ];
+
+  /// Strongest evidence: Android Auto's own log (advanced mode).
+  static void _androidAutoLog(List<Session> bad, int wiredOk, List<Finding> f) {
+    final socket = bad.fold<int>(0, (a, s) => a + s.ghSocket);
+    final noData = bad.fold<int>(0, (a, s) => a + s.ghNoData);
+    final noHfp = bad.fold<int>(0, (a, s) => a + s.ghNoHfp);
+    if (noData >= 2) {
+      f.add(Finding(
+        id: 'adapter_car',
+        kind: Kind.cause,
+        score: (0.75 + 0.03 * noData + (wiredOk > 0 ? 0.1 : 0)).clamp(0, 1).toDouble(),
+        title: tr('Adaptorul nu pornește Android Auto cu mașina', 'The adapter fails to start Android Auto with the car'),
+        detail: tr(
+            'Jurnalul Android Auto arată că telefonul ajunge până la capăt: Bluetooth, Wi-Fi și conexiunea către adaptor sunt OK. Adaptorul însă nu trimite nimic înapoi, pentru că nu primește răspuns de la mașină prin USB, și închide legătura după ~4 secunde.'
+            '${wiredOk > 0 ? ' Cu telefonul direct pe cablu, Android Auto pornește imediat, deci portul și unitatea MG sunt în regulă: veriga slabă e adaptorul.' : ''}',
+            'Android Auto\'s log shows the phone gets all the way: Bluetooth, Wi-Fi and the connection to the adapter are fine. The adapter, however, sends nothing back because the car doesn\'t answer it over USB, and it closes the link after ~4 seconds.'
+            '${wiredOk > 0 ? ' With the phone plugged in directly, Android Auto starts immediately, so the port and the MG head unit are fine: the weak link is the adapter.' : ''}'),
+        fixes: [
+          tr('Aplicația AAWireless → Advanced: activează Passthrough și testează 5–10 porniri.',
+              'AAWireless app → Advanced: turn Passthrough on and test 5–10 starts.'),
+          tr('Actualizează firmware-ul AAWireless (adaptorul alimentat de la o priză în timpul update-ului).',
+              'Update the AAWireless firmware (adapter on a wall socket during the update).'),
+          tr('Trimite raportul Nauto la suportul AAWireless: tiparul „socket conectat, fără date” e exact ce au nevoie.',
+              'Send the Nauto report to AAWireless support: the “socket connected, no data” pattern is exactly what they need.'),
+          tr('Dacă nu se rezolvă: adaptorul e incompatibil sau defect cu unitatea MG — garanție/schimb.',
+              'If it isn\'t fixed: the adapter is incompatible or faulty with the MG head unit — warranty/replacement.'),
+        ],
+        evidence: tr('$noData din $socket conexiuni către adaptor fără niciun răspuns de la mașină.',
+            '$noData of $socket connections to the adapter got no answer from the car.'),
+      ));
+    }
+    if (noHfp >= 2) {
+      f.add(Finding(
+        id: 'adapter_hfp',
+        kind: Kind.cause,
+        score: (0.4 + 0.05 * noHfp).clamp(0, 0.8).toDouble(),
+        title: tr('Bluetooth-ul adaptorului pornește greu', 'The adapter\'s Bluetooth starts slowly'),
+        detail: tr('Android Auto a așteptat 5 secunde profilul hands-free al adaptorului și a renunțat.',
+            'Android Auto waited 5 seconds for the adapter\'s hands-free profile and gave up.'),
+        fixes: [
+          tr('Șterge din Bluetooth adaptoarele AAWireless nefolosite și dispozitivele mașinii care concurează la pornire.',
+              'Remove unused AAWireless adapters and car devices that compete at start from Bluetooth.'),
+        ],
+        evidence: tr('$noHfp încercări fără hands-free.', '$noHfp tries without hands-free.'),
+      ));
+    }
+  }
 
   static void _patterns(List<Session> all, List<Session> bad, List<Finding> f) {
     final cycles = bad.expand((s) => s.cycles).toList();

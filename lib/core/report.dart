@@ -14,6 +14,7 @@ String outcomeLabel(Outcome o) => switch (o) {
       Outcome.retry => tr('Cu reîncercări', 'With retries'),
       Outcome.drop => tr('Întreruptă', 'Dropped'),
       Outcome.fail => tr('Eșuată', 'Failed'),
+      Outcome.wired => tr('Pe cablu', 'Wired'),
       Outcome.ongoing => tr('În curs', 'In progress'),
     };
 
@@ -50,7 +51,8 @@ String buildReport({
         'gaps=${s.gaps} drops=${s.drops.map((x) => x.adapterGone ? 'P' : 'L').join()} wifiSeen=${s.dongleWifiSeen} '
         'cyclesWifi=${s.cycles.map((c) => c.wifi ? 'W' : 'B').join()} home=${s.homeWifi ?? '-'} otherBt=${s.otherBt.join('|')} '
         'saver=${s.saver} idle=${s.idle} screenOff=${s.screenOff} rssi=${s.minRssi ?? '-'} freq=${s.freq ?? '-'} '
-        'bat=${s.battery ?? '-'} aa=${s.aaVer ?? '-'} marks=${s.marks}');
+        'bat=${s.battery ?? '-'} aa=${s.aaVer ?? '-'} marks=${s.marks} wired=${s.wired} '
+        'gh(socket=${s.ghSocket} noData=${s.ghNoData} noHfp=${s.ghNoHfp})');
   }
   b.writeln();
   b.writeln('== Journal (last 14 days)');

@@ -114,6 +114,32 @@ void main() {
     expect(d.findings.any((f) => f.id == 'home_wifi'), isFalse);
   });
 
+  test('wired run is not judged, adapter silence is the cause', () {
+    final evs = <Ev>[
+      Ev.at(1000, 'aa', {'type': 2}),
+      Ev.at(1060, 'aa', {'type': 0}),
+      for (var k = 0; k < 3; k++) ...[
+        Ev.at(1070 + k * 20, 'bt', {...dongle, 'on': true}),
+        Ev.at(1073 + k * 20, 'gh', {'e': 'WIRELESS_WIFI_SOCKET_CONNECTED'}),
+        Ev.at(1077 + k * 20, 'gh', {'e': 'FRAMER_READ_IO_EXCEPTION_WITH_NO_DATA_RECEIVED'}),
+        Ev.at(1079 + k * 20, 'bt', {...dongle, 'on': false}),
+      ],
+      Ev.at(1140, 'bt', {...dongle, 'on': true}),
+      Ev.at(1150, 'aa', {'type': 2}),
+      Ev.at(2000, 'aa', {'type': 0}),
+      Ev.at(2001, 'bt', {...dongle, 'on': false}),
+      Ev.at(9000, 'aa', {'type': 2}),
+      Ev.at(9030, 'aa', {'type': 0}),
+    ];
+    final s = build(evs);
+    expect(s.first.outcome, Outcome.retry);
+    expect(s.first.ttc, greaterThan(0));
+    expect(s.last.outcome, Outcome.wired);
+    final d = Analyzer.run(s);
+    expect(d.total, 1);
+    expect(d.findings.first.id, 'adapter_car');
+  });
+
   test('journal parsing skips broken lines', () {
     final evs = Ev.parse('{"ts":2000,"t":"bt","on":true}\n{"ts":1000,"t":"aa","type":2}\n{broken');
     expect(evs.length, 2);

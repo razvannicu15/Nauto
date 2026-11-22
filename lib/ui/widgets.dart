@@ -23,6 +23,7 @@ Color outcomeColor(BuildContext context, Outcome o) {
     Outcome.retry => dark ? const Color(0xFFF4A261) : const Color(0xFFC25E00),
     Outcome.drop => dark ? const Color(0xFFFF8A80) : const Color(0xFFC62828),
     Outcome.fail => dark ? const Color(0xFFFF8A80) : const Color(0xFFB71C1C),
+    Outcome.wired => Theme.of(context).colorScheme.outline,
     Outcome.ongoing => Theme.of(context).colorScheme.primary,
   };
 }
@@ -33,6 +34,7 @@ IconData outcomeIcon(Outcome o) => switch (o) {
       Outcome.retry => Icons.autorenew,
       Outcome.drop => Icons.link_off,
       Outcome.fail => Icons.error,
+      Outcome.wired => Icons.usb,
       Outcome.ongoing => Icons.sync,
     };
 

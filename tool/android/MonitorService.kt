@@ -459,6 +459,12 @@ class MonitorService : Service() {
             "SurfaceFlinger|PackageConfigPersister| View +:|SemWifiLinkQuality|SemWifiUsabilityStats|SemWifiBackOff|Binder +:"
     )
 
+    private val ghKey: Pattern = Pattern.compile(
+        "GH\\.ConnLoggerV2: .*?(WIRELESS_WIFI_SOCKET_CONNECTED|FRAMER_READ_IO_EXCEPTION_WITH_NO_DATA_RECEIVED|" +
+            "WIRELESS_SETUP_FAILED_TO_START_NO_HFP_FROM_HU_PRESENCE|VERSION_NEGOTIATION_STARTED|PROJECTION_STARTED_WIFI|PROJECTION_STARTED_USB|" +
+            "WIRELESS_CONNECTED_WIFI|WIRELESS_WIFI_NETWORK_CONNECTION_LOST)\\b"
+    )
+
     private fun startLogStream() {
         if (checkSelfPermission("android.permission.READ_LOGS") != PackageManager.PERMISSION_GRANTED) return
         if (logThread?.isAlive == true) return
@@ -473,6 +479,8 @@ class MonitorService : Service() {
                 while (true) {
                     val line = r.readLine() ?: break
                     if (!keep.matcher(line).find() || noise.matcher(line).find()) continue
+                    val gm = ghKey.matcher(line)
+                    if (gm.find()) log("gh", mapOf("e" to gm.group(1)))
                     w.write(line); w.write("\n"); w.flush()
                     written += line.length + 1
                     if (written > 3_000_000) {

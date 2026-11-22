@@ -1,7 +1,7 @@
 import 'events.dart';
 
 /// How a connection attempt went.
-enum Outcome { ok, slow, retry, drop, fail, ongoing }
+enum Outcome { ok, slow, retry, drop, fail, wired, ongoing }
 
 /// A failed try before Android Auto started: the adapter connected over
 /// Bluetooth, then disappeared again.
@@ -56,19 +56,28 @@ class Session {
   bool dongleWifiSeen = false;
   int supplicantErrors = 0;
 
+  /// Android Auto ran over a USB cable (phone plugged in directly).
+  bool wired = false;
+
+  // Android Auto's own connection log (advanced mode).
+  int ghSocket = 0; // phone opened the Android Auto socket to the adapter
+  int ghNoData = 0; // ...but the adapter never sent anything (car silent)
+  int ghNoHfp = 0; // adapter's Bluetooth hands-free never came up
+
   DateTime get startTime => DateTime.fromMillisecondsSinceEpoch(start);
 
   /// Seconds from the adapter appearing to the car screen showing Android Auto.
   int? get ttc {
-    if (ttcNative != null) return ttcNative;
-    if (firstAa == null) return null;
-    return ((firstAa! - (firstBt ?? start)) / 1000).round();
+    if (ttcNative != null && ttcNative! >= 0) return ttcNative;
+    if (firstAa == null || firstBt == null || firstBt! > firstAa!) return null;
+    return ((firstAa! - firstBt!) / 1000).round();
   }
 
   int get retries => cycles.length;
   int get durationSec => ((end - start) / 1000).round();
 
   Outcome get outcome {
+    if (firstAa == null && wired && firstBt == null) return open ? Outcome.ongoing : Outcome.wired;
     if (firstAa == null) return open ? Outcome.ongoing : Outcome.fail;
     if (drops.isNotEmpty) return Outcome.drop;
     if (retries > 0) return Outcome.retry;
@@ -76,7 +85,8 @@ class Session {
     return Outcome.ok;
   }
 
-  bool get bad => (outcome != Outcome.ok && outcome != Outcome.ongoing) || marks > 0;
+  bool get bad =>
+      (outcome != Outcome.ok && outcome != Outcome.ongoing && outcome != Outcome.wired) || marks > 0;
   bool get finished => outcome != Outcome.ongoing;
 }
 
@@ -110,6 +120,7 @@ class SessionBuilder {
     Session? cur;
     var dongleOn = false;
     var projection = false;
+    var wiredProj = false;
     int? idleSince; // both adapter and projection gone since
     Cycle? cycle;
     int? dongleOffAt;
@@ -219,6 +230,23 @@ class SessionBuilder {
             s.drops.last.adapterGone = true;
           }
         }
+      } else if (e.t == 'aa' && (wiredProj || (e.isProjection && !dongleOn && !projection))) {
+        // Projection with no adapter around = phone on a USB cable.
+        if (e.isProjection) {
+          wiredProj = true;
+          s.wired = true;
+        } else {
+          wiredProj = false;
+        }
+      } else if (e.t == 'gh') {
+        switch (e.d['e']) {
+          case 'WIRELESS_WIFI_SOCKET_CONNECTED':
+            s.ghSocket++;
+          case 'FRAMER_READ_IO_EXCEPTION_WITH_NO_DATA_RECEIVED':
+            s.ghNoData++;
+          case 'WIRELESS_SETUP_FAILED_TO_START_NO_HFP_FROM_HU_PRESENCE':
+            s.ghNoHfp++;
+        }
       } else if (e.t == 'aa') {
         final p = e.isProjection;
         if (p && !projection) {
@@ -270,7 +298,7 @@ class SessionBuilder {
         }
       }
 
-      final active = dongleOn || projection;
+      final active = dongleOn || projection || wiredProj;
       if (active) {
         idleSince = null;
       } else {
