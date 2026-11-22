@@ -251,6 +251,12 @@ class SessionBuilder {
         }
       } else if (e.t == 'supp') {
         if (e.d['err'] != null) s.supplicantErrors++;
+        // The monitor only logs supplicant states while the adapter is connected,
+        // so COMPLETED here means the phone joined the adapter's Wi-Fi.
+        if (e.d['st'] == 'COMPLETED' && dongleOn) {
+          s.dongleWifiSeen = true;
+          if (s.firstAa == null && cycle != null) cycle!.wifi = true;
+        }
       } else if (e.t == 'mark') {
         s.marks++;
       } else if (s.firstAa == null) {

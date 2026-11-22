@@ -454,6 +454,11 @@ class MonitorService : Service() {
             "AdapterService|HeadsetService|A2dpService|Rfcomm|RFCOMM|LocalOnly|local-only|UsbDeviceManager"
     )
 
+    private val noise: Pattern = Pattern.compile(
+        "NetworkFactory|StatusBar|VRI\\[|LocationManagerService|NotifRow|HoneySpace|NotificationPipeline|" +
+            "SurfaceFlinger|PackageConfigPersister| View +:|SemWifiLinkQuality|SemWifiUsabilityStats|SemWifiBackOff|Binder +:"
+    )
+
     private fun startLogStream() {
         if (checkSelfPermission("android.permission.READ_LOGS") != PackageManager.PERMISSION_GRANTED) return
         if (logThread?.isAlive == true) return
@@ -467,7 +472,7 @@ class MonitorService : Service() {
                 var written = f.length()
                 while (true) {
                     val line = r.readLine() ?: break
-                    if (!keep.matcher(line).find()) continue
+                    if (!keep.matcher(line).find() || noise.matcher(line).find()) continue
                     w.write(line); w.write("\n"); w.flush()
                     written += line.length + 1
                     if (written > 3_000_000) {

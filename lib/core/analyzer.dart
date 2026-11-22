@@ -297,7 +297,8 @@ class Analyzer {
     final pWith = badWith / withF.length;
     final pWithout = without.isEmpty ? 0.0 : without.where((s) => s.bad).length / without.length;
     final lift = pWith - pWithout;
-    if (lift < 0.25 && !(without.isEmpty && pWith >= 0.8)) return;
+    // Present in every drive: nothing to compare with, so it proves nothing.
+    if (without.isEmpty || lift < 0.25) return;
     final coverage = badWith / bad.length;
     out.add(Finding(
       id: id,

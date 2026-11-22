@@ -94,6 +94,26 @@ void main() {
     expect(d.findings.any((f) => f.id == 'no_bt'), isTrue);
   });
 
+  test('supplicant COMPLETED during a try counts as reaching Wi-Fi', () {
+    final evs = <Ev>[
+      Ev.at(1000, 'bt', {...dongle, 'on': true}),
+      Ev.at(1001, 'supp', {'st': 'COMPLETED'}),
+      Ev.at(1006, 'bt', {...dongle, 'on': false}),
+      Ev.at(1015, 'bt', {...dongle, 'on': true}),
+      Ev.at(1020, 'aa', {'type': 2}),
+      Ev.at(2000, 'aa', {'type': 0}),
+      Ev.at(2001, 'bt', {...dongle, 'on': false}),
+    ];
+    final s = build(evs);
+    expect(s.single.cycles.single.wifi, isTrue);
+  });
+
+  test('a condition present in every drive is not reported as a cause', () {
+    final evs = [for (var i = 0; i < 4; i++) ...drive(10000 + i * 3600, loop: true, home: true)];
+    final d = Analyzer.run(build(evs));
+    expect(d.findings.any((f) => f.id == 'home_wifi'), isFalse);
+  });
+
   test('journal parsing skips broken lines', () {
     final evs = Ev.parse('{"ts":2000,"t":"bt","on":true}\n{"ts":1000,"t":"aa","type":2}\n{broken');
     expect(evs.length, 2);

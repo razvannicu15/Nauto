@@ -42,12 +42,19 @@ class Native {
   }
 
   /// Last lines of the system log stream (advanced mode).
+  static final _key = RegExp(r'GH\.ConnLogger|CAR\.GAL|CAR\.SETUP|CAR\.WIFI|CAR\.BT|[Ww]ireless|wpa_supplicant: .*(CTRL-EVENT|reason)');
+
   static Future<List<String>> sysLog(String filesDir, {int max = 3000}) async {
     final lines = <String>[];
     for (final n in ['sys.1.log', 'sys.log']) {
       final f = File('$filesDir/$n');
       if (await f.exists()) lines.addAll(await f.readAsLines());
     }
-    return lines.length > max ? lines.sublist(lines.length - max) : lines;
+    // Every Android Auto connection step from the whole log, then the recent tail.
+    final keyLines = lines.where(_key.hasMatch).toList();
+    final key = keyLines.length > 6000 ? keyLines.sublist(keyLines.length - 6000) : keyLines;
+    final tail = lines.length > max ? lines.sublist(lines.length - max) : lines;
+    final seen = key.toSet();
+    return [...key, '----- tail -----', ...tail.where((l) => !seen.contains(l))];
   }
 }
